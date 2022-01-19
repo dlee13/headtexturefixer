@@ -1,0 +1,8 @@
+name: HeadTextureFixer
+version: 1.0-SNAPSHOT
+author: dlee13
+main: xyz.holocons.mc.headtexturefixer.PaperPlugin
+api-version: 1.18
+commands:
+  fixhead:
+    description: normalizes the base64 texture of a player head
