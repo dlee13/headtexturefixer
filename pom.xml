@@ -74,8 +74,8 @@
             <resource>
                 <directory>target/release</directory>
                 <includes>
-                    <include>headtexturefixer_native.dll</include>
-                    <include>headtexturefixer_native.so</include>
+                    <include>*.dll</include>
+                    <include>*.so</include>
                 </includes>
             </resource>
         </resources>
