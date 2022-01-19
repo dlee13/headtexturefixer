@@ -10,8 +10,8 @@ pub extern "system" fn Java_xyz_holocons_mc_headtexturefixer_Native_normalizeTex
     string: JString,
 ) -> jstring {
     let input: String = env.get_string(string).expect("Couldn't get java string!").into();
-    let normalized = normalize(&input).unwrap_or(input);
-    let output = env.new_string(normalized).expect("Couldn't create java string!");
+    let base64_out = normalize(&input).unwrap_or(input);
+    let output = env.new_string(base64_out).expect("Couldn't create java string!");
 
     output.into_inner()
 }
