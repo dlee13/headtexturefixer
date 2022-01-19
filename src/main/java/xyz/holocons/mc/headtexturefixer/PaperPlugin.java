@@ -5,6 +5,7 @@ import com.mojang.authlib.properties.Property;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.Collection;
+import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -33,9 +34,9 @@ public class PaperPlugin extends JavaPlugin {
             final Player player = (Player) sender;
             final ItemStack mainHandItem = player.getInventory().getItemInMainHand();
 
-            if (!(mainHandItem.getItemMeta() instanceof SkullMeta)) {
+            if (mainHandItem.getType() != Material.PLAYER_HEAD) {
                 player.sendMessage("Put the head in your main hand!");
-                return false;
+                return true;
             }
 
             SkullMeta meta = (SkullMeta) mainHandItem.getItemMeta();
