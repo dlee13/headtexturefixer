@@ -1,11 +1,10 @@
 package xyz.holocons.mc.headtexturefixer;
 
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.Property;
+import com.destroystokyo.paper.profile.PlayerProfile;
+import com.destroystokyo.paper.profile.ProfileProperty;
 import java.io.File;
-import java.lang.reflect.Field;
-import java.util.Collection;
-import org.bukkit.Material;
+import java.util.Iterator;
+import java.util.Set;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -14,8 +13,6 @@ import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class PaperPlugin extends JavaPlugin {
-
-    private static Field metaProfileField;
 
     @Override
     public void onEnable() {
@@ -31,41 +28,37 @@ public class PaperPlugin extends JavaPlugin {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String args[]) {
         if (command.getName().equalsIgnoreCase("fixhead") && sender instanceof Player) {
-            final Player player = (Player) sender;
-            final ItemStack mainHandItem = player.getInventory().getItemInMainHand();
-
-            if (mainHandItem.getType() != Material.PLAYER_HEAD) {
-                player.sendMessage("Put the head in your main hand!");
-                return true;
-            }
-
-            SkullMeta meta = (SkullMeta) mainHandItem.getItemMeta();
-            mutateSkullMeta(meta);
-            mainHandItem.setItemMeta(meta);
-
+            fixHead((Player) sender);
             return true;
         }
 
         return false;
     }
 
-    private static void mutateSkullMeta(SkullMeta meta) {
-        try {
-            if (metaProfileField == null) {
-                metaProfileField = meta.getClass().getDeclaredField("profile");
-                metaProfileField.setAccessible(true);
+    private static void fixHead(Player player) {
+        final ItemStack mainHandItem = player.getInventory().getItemInMainHand();
+
+        if (mainHandItem.getItemMeta() instanceof SkullMeta) {
+            final SkullMeta meta = (SkullMeta) mainHandItem.getItemMeta();
+            final PlayerProfile profile = meta.getPlayerProfile();
+            if (profile == null) {
+                return;
             }
 
-            GameProfile profile = (GameProfile) metaProfileField.get(meta);
-
-            final Collection<Property> textures = profile.getProperties().get("textures");
-            if (!textures.isEmpty()) {
-                String base64 = textures.iterator().next().getValue();
-                textures.clear();
-                profile.getProperties().put("textures", new Property("textures", Native.normalizeTexture(base64)));
+            final Set<ProfileProperty> properties = profile.getProperties();
+            final Iterator<ProfileProperty> iterator = properties.iterator();
+            while (iterator.hasNext()) {
+                final ProfileProperty property = iterator.next();
+                if (property.getName().matches("textures")) {
+                    iterator.remove();
+                    properties.add(new ProfileProperty("textures", Native.normalizeTexture(property.getValue())));
+                    meta.setPlayerProfile(profile);
+                    mainHandItem.setItemMeta(meta);
+                    return;
+                }
             }
-        } catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException e) {
-            e.printStackTrace();
+        } else {
+            player.sendMessage("Put the head in your main hand!");
         }
     }
 }
