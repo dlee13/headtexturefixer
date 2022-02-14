@@ -6,3 +6,4 @@ api-version: 1.18
 commands:
   fixhead:
     description: normalizes the base64 texture of a player head
+    usage: "Usage: /fixhead [#<hexcolor><name>]"

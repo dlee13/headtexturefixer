@@ -1,12 +1,19 @@
 package xyz.holocons.mc.headtexturefixer;
 
-import com.destroystokyo.paper.profile.ProfileProperty;
 import java.io.File;
+import java.util.HexFormat;
+
+import com.destroystokyo.paper.profile.ProfileProperty;
+
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 
 public final class PaperPlugin extends JavaPlugin {
 
@@ -22,22 +29,37 @@ public final class PaperPlugin extends JavaPlugin {
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String args[]) {
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (command.getName().equalsIgnoreCase("fixhead") && sender instanceof final Player player) {
-            fixHead(player);
-            return true;
+            return fixHead(player, args);
         }
 
         return false;
     }
 
-    private static void fixHead(Player player) {
+    private static boolean fixHead(Player player, String[] args) {
         final var item = player.getInventory().getItemInMainHand();
 
         if (item.getItemMeta() instanceof final SkullMeta meta) {
             final var profile = meta.getPlayerProfile();
             if (profile == null) {
-                return;
+                return true;
+            }
+
+            if (args.length > 0 && args[0].charAt(0) == '#') {
+                final var joinedArgs = String.join(" ", args);
+                String name;
+                int color;
+                try {
+                    name = joinedArgs.substring(7);
+                    color = HexFormat.fromHexDigits(joinedArgs, 1, 7);
+                } catch (IndexOutOfBoundsException | IllegalArgumentException e) {
+                    return false;
+                }
+                final var component = Component.text(name)
+                    .color(TextColor.color(color))
+                    .decoration(TextDecoration.ITALIC, false);
+                meta.displayName(component);
             }
 
             final var properties = profile.getProperties();
@@ -49,11 +71,12 @@ public final class PaperPlugin extends JavaPlugin {
                     properties.add(new ProfileProperty("textures", Native.normalizeTexture(property.getValue())));
                     meta.setPlayerProfile(profile);
                     item.setItemMeta(meta);
-                    return;
+                    return true;
                 }
             }
         } else {
             player.sendMessage("Put the head in your main hand!");
         }
+        return true;
     }
 }
