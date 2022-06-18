@@ -19,7 +19,10 @@ public final class PaperPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        this.saveResource(Native.LIBRARY_NAME, false);
+        saveDefaultConfig();
+        final var config = getConfig();
+
+        this.saveResource(Native.LIBRARY_NAME, config.getBoolean("replace-native"));
         this.getLogger().info("Loading " + Native.LIBRARY_NAME);
         try {
             System.load(this.getDataFolder().getAbsolutePath() + File.separator + Native.LIBRARY_NAME);
