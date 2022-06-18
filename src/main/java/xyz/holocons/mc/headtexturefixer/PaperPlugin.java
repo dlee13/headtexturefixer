@@ -22,10 +22,10 @@ public final class PaperPlugin extends JavaPlugin {
         saveDefaultConfig();
         final var config = getConfig();
 
-        this.saveResource(Native.LIBRARY_NAME, config.getBoolean("replace-native"));
-        this.getLogger().info("Loading " + Native.LIBRARY_NAME);
+        saveResource(Native.LIBRARY_NAME, config.getBoolean("replace-native"));
+        getLogger().info("Loading " + Native.LIBRARY_NAME);
         try {
-            System.load(this.getDataFolder().getAbsolutePath() + File.separator + Native.LIBRARY_NAME);
+            System.load(getDataFolder().getAbsolutePath() + File.separator + Native.LIBRARY_NAME);
         } catch (SecurityException | UnsatisfiedLinkError e) {
             e.printStackTrace();
         }
