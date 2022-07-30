@@ -15,7 +15,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
-public final class PaperPlugin extends JavaPlugin {
+public final class HeadTextureFixerPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {

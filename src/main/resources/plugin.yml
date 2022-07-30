@@ -1,7 +1,7 @@
 name: HeadTextureFixer
 version: 1.0-SNAPSHOT
 author: dlee13
-main: xyz.holocons.mc.headtexturefixer.PaperPlugin
+main: xyz.holocons.mc.headtexturefixer.HeadTextureFixerPlugin
 api-version: 1.18
 commands:
   fixhead:
