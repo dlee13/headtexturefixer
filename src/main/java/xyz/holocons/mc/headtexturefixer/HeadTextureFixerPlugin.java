@@ -1,19 +1,19 @@
 package xyz.holocons.mc.headtexturefixer;
 
 import java.io.File;
-import java.util.HexFormat;
 
-import com.destroystokyo.paper.profile.ProfileProperty;
-
-import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import com.destroystokyo.paper.profile.ProfileProperty;
+import com.mojang.brigadier.Command;
+
+import io.papermc.paper.command.brigadier.Commands;
+import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 
 public final class HeadTextureFixerPlugin extends JavaPlugin {
 
@@ -29,39 +29,33 @@ public final class HeadTextureFixerPlugin extends JavaPlugin {
         } catch (SecurityException | UnsatisfiedLinkError e) {
             e.printStackTrace();
         }
+
+        final var manager = getLifecycleManager();
+        manager.registerEventHandler(LifecycleEvents.COMMANDS, event -> registerCommands(event.registrar()));
     }
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("fixhead") && sender instanceof final Player player) {
-            return fixHead(player, args);
+    private static void registerCommands(final Commands registrar) {
+        registrar.register(Commands.literal("fixhead")
+                .executes(ctx -> fixHead(ctx.getSource().getSender(), null))
+                .then(Commands.argument("component", ArgumentTypes.component()))
+                .executes(ctx -> fixHead(ctx.getSource().getSender(), ctx.getArgument("component", Component.class)))
+                .build(),
+                "Usage: /fixhead [Component]");
+    }
+
+    private static int fixHead(final CommandSender sender, final Component component) {
+        if (!(sender instanceof Player player)) {
+            return 0;
         }
 
-        return false;
-    }
-
-    private static boolean fixHead(Player player, String[] args) {
         final var item = player.getInventory().getItemInMainHand();
-
         if (item.getItemMeta() instanceof final SkullMeta meta) {
             final var profile = meta.getPlayerProfile();
             if (profile == null) {
-                return true;
+                return Command.SINGLE_SUCCESS;
             }
 
-            if (args.length > 0 && args[0].charAt(0) == '#') {
-                final var joinedArgs = String.join(" ", args);
-                String name;
-                int color;
-                try {
-                    name = joinedArgs.substring(7);
-                    color = HexFormat.fromHexDigits(joinedArgs, 1, 7);
-                } catch (IndexOutOfBoundsException | IllegalArgumentException e) {
-                    return false;
-                }
-                final var component = Component.text(name)
-                    .color(TextColor.color(color))
-                    .decoration(TextDecoration.ITALIC, false);
+            if (component != null) {
                 meta.displayName(component);
             }
 
@@ -74,12 +68,12 @@ public final class HeadTextureFixerPlugin extends JavaPlugin {
                     properties.add(new ProfileProperty("textures", Native.normalizeTexture(property.getValue())));
                     meta.setPlayerProfile(profile);
                     item.setItemMeta(meta);
-                    return true;
+                    break;
                 }
             }
         } else {
             player.sendMessage("Put the head in your main hand!");
         }
-        return true;
+        return Command.SINGLE_SUCCESS;
     }
 }
