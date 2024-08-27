@@ -12,8 +12,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Set up Rust toolchain
+      run: rustup target add wasm32-wasip1
     - name: Build with Cargo
-      run: cargo build --workspace --release --verbose --target wasm32-wasip1
+      run: cargo build --workspace --release --verbose --target=wasm32-wasip1
     - name: Set up JDK
       uses: actions/setup-java@v4
       with:
