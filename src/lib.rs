@@ -1,45 +1,54 @@
-use base64::{encode, decode, DecodeError};
-use jni::{objects::{JClass, JString}, sys::jstring, JNIEnv};
+use std::{
+    alloc::{self as std_alloc, Layout},
+    slice, str,
+};
+
+use base64::prelude::{Engine as _, BASE64_STANDARD_NO_PAD, BASE64_URL_SAFE_NO_PAD};
 use serde::{Deserialize, Serialize};
-use serde_json::Error as SerdeError;
 
 #[no_mangle]
-pub extern "system" fn Java_xyz_holocons_mc_headtexturefixer_Native_normalizeTexture(
-    env: JNIEnv,
-    _class: JClass,
-    string: JString,
-) -> jstring {
-    let input: String = env.get_string(string).expect("Couldn't get java string!").into();
-    let base64_out = normalize(&input).unwrap_or(input);
-    let output = env.new_string(base64_out).expect("Couldn't create java string!");
-
-    output.into_inner()
+pub unsafe extern "C" fn alloc(len: usize) -> *mut u8 {
+    std_alloc::alloc(Layout::array::<u8>(len).expect("Layout error"))
 }
 
-fn normalize(base64_in: &str) -> Result<String, NormalizeError> {
-    match strip(&base64_in) {
-        Err(NormalizeError::Base64(DecodeError::InvalidLength)) => strip(&base64_in[..base64_in.len() - 1]),
-        result => result,
-    }
+#[no_mangle]
+pub unsafe extern "C" fn dealloc(ptr: *mut u8, len: usize) {
+    std_alloc::dealloc(ptr, Layout::array::<u8>(len).expect("Layout error"));
 }
 
-fn strip(base64_in: &str) -> Result<String, NormalizeError> {
-    let decoded = decode(&base64_in).map_err(|e| NormalizeError::Base64(e))?;
-    let json_in: Base64Texture = serde_json::from_slice(&decoded).map_err(|e| NormalizeError::Json(e))?;
-    let json_out = serde_json::to_string(&json_in).map_err(|e| NormalizeError::Json(e))?;
-    let encoded = encode(&json_out);
+#[no_mangle]
+pub unsafe extern "C" fn normalize_texture(ptr: *mut u8, len: usize) -> usize {
+    let buffer = slice::from_raw_parts_mut(ptr, len);
+    let input = str::from_utf8_unchecked(buffer);
+    let output = strip(input);
+    buffer[..output.len()].copy_from_slice(output.as_bytes());
+    output.len()
+}
 
+fn strip(input: &str) -> String {
+    let mut string = input.to_owned();
+    string.retain(|character: char| !(character == '=' || character.is_whitespace()));
+    re_encode(&string).unwrap_or(string)
+}
+
+fn re_encode(input: &str) -> Result<String, ReEncodeError> {
+    let decoded = BASE64_STANDARD_NO_PAD
+        .decode(input)
+        .map_err(|_| ReEncodeError::Base64)?;
+    let structure: Property = serde_json::from_slice(&decoded).map_err(|_| ReEncodeError::Json)?;
+    let json = serde_json::to_string(&structure).map_err(|_| ReEncodeError::Json)?;
+    let encoded = BASE64_URL_SAFE_NO_PAD.encode(json);
     Ok(encoded)
 }
 
 #[derive(Debug)]
-enum NormalizeError {
-    Base64(DecodeError),
-    Json(SerdeError),
+enum ReEncodeError {
+    Base64,
+    Json,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Base64Texture {
+struct Property {
     #[serde(rename = "timestamp", skip)]
     _timestamp: u64,
     #[serde(rename = "profileId", skip)]
