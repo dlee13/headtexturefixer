@@ -19,25 +19,28 @@ pub unsafe extern "C" fn dealloc(ptr: *mut u8, len: usize) {
 #[no_mangle]
 pub unsafe extern "C" fn normalize_texture(ptr: *mut u8, len: usize) -> usize {
     let buffer = slice::from_raw_parts_mut(ptr, len);
-    let input = str::from_utf8_unchecked(buffer);
-    let output = strip(input);
-    buffer[..output.len()].copy_from_slice(output.as_bytes());
+    let output = strip(&buffer);
+    buffer[..output.len()].copy_from_slice(&output);
     output.len()
 }
 
-fn strip(input: &str) -> String {
-    let mut string = input.to_owned();
-    string.retain(|character: char| !(character == '=' || character.is_whitespace()));
-    re_encode(&string).unwrap_or(string)
+fn strip(input: &[u8]) -> Vec<u8> {
+    let mut vec = input.to_owned();
+    vec.retain(|&byte| !(byte == b'=' || byte.is_ascii_whitespace()));
+    re_encode(&vec).unwrap_or(vec)
 }
 
-fn re_encode(input: &str) -> Result<String, ReEncodeError> {
+fn re_encode(input: &[u8]) -> Result<Vec<u8>, ReEncodeError> {
     let decoded = BASE64_STANDARD_NO_PAD
         .decode(input)
         .map_err(|_| ReEncodeError::Base64)?;
     let structure: Property = serde_json::from_slice(&decoded).map_err(|_| ReEncodeError::Json)?;
-    let json = serde_json::to_string(&structure).map_err(|_| ReEncodeError::Json)?;
-    let encoded = BASE64_URL_SAFE_NO_PAD.encode(json);
+    let json = serde_json::to_vec(&structure).map_err(|_| ReEncodeError::Json)?;
+    let length = base64::encoded_len(json.len(), false).ok_or(ReEncodeError::Base64)?;
+    let mut encoded = vec![u8::default(); length];
+    let _ = BASE64_URL_SAFE_NO_PAD
+        .encode_slice(json, &mut encoded)
+        .map_err(|_| ReEncodeError::Base64)?;
     Ok(encoded)
 }
 
