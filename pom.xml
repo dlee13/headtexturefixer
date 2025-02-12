@@ -94,7 +94,7 @@
                 <directory>src/main/resources</directory>
             </resource>
             <resource>
-                <directory>target/wasm32-wasip1/release</directory>
+                <directory>target/wasm32-unknown-unknown/release</directory>
                 <includes>
                     <include>*.wasm</include>
                 </includes>
