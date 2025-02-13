@@ -11,9 +11,7 @@ import com.destroystokyo.paper.profile.ProfileProperty;
 import com.dylibso.chicory.runtime.ExportFunction;
 import com.dylibso.chicory.runtime.Instance;
 import com.dylibso.chicory.runtime.Memory;
-import com.dylibso.chicory.runtime.Module;
-import com.dylibso.chicory.runtime.ModuleType;
-import com.dylibso.chicory.wasm.types.Value;
+import com.dylibso.chicory.wasm.Parser;
 import com.mojang.brigadier.Command;
 
 import io.papermc.paper.command.brigadier.Commands;
@@ -23,26 +21,16 @@ import net.kyori.adventure.text.Component;
 
 public final class HeadTextureFixerPlugin extends JavaPlugin {
 
-    public static final String MODULE_NAME = "normalize_texture.wasm";
-
-    private ExportFunction alloc;
-    private ExportFunction dealloc;
-    private ExportFunction normalizeTexture;
-    private Memory memory;
+    private Module module;
 
     @Override
     public void onEnable() {
-        final Instance instance;
-        try (final var stream = getResource(MODULE_NAME)) {
-            instance = Module.builder(stream).withType(ModuleType.BINARY).build().instantiate();
+        try {
+            this.module = new Module(this);
         } catch (Exception e) {
             getLogger().severe(e.getMessage());
             return;
         }
-        this.alloc = instance.export("alloc");
-        this.dealloc = instance.export("dealloc");
-        this.normalizeTexture = instance.export("normalize_texture");
-        this.memory = instance.memory();
 
         final var manager = getLifecycleManager();
         manager.registerEventHandler(LifecycleEvents.COMMANDS, event -> registerCommands(event.registrar()));
@@ -78,9 +66,10 @@ public final class HeadTextureFixerPlugin extends JavaPlugin {
             final var iterator = properties.iterator();
             while (iterator.hasNext()) {
                 final var property = iterator.next();
-                if (property.getName().matches("textures")) {
+                if (property.getName().equals("textures")) {
                     iterator.remove();
-                    properties.add(new ProfileProperty("textures", normalizeTexture(property.getValue())));
+                    final var textures = module.fixTexture(property.getValue());
+                    properties.add(new ProfileProperty("textures", textures));
                     meta.setPlayerProfile(profile);
                     item.setItemMeta(meta);
                     break;
@@ -92,21 +81,45 @@ public final class HeadTextureFixerPlugin extends JavaPlugin {
         return Command.SINGLE_SUCCESS;
     }
 
-    private int alloc(final int length) {
-        return alloc.apply(Value.i32(length))[0].asInt();
-    }
+    private static final class Module {
 
-    private void dealloc(final int pointer, final int length) {
-        dealloc.apply(Value.i32(pointer), Value.i32(length));
-    }
+        private static final String MODULE_NAME = "normalize_texture.wasm";
 
-    public String normalizeTexture(final String inputBase64) {
-        final var inputLength = inputBase64.getBytes(StandardCharsets.UTF_8).length;
-        final var pointer = alloc(inputLength);
-        memory.writeString(pointer, inputBase64, StandardCharsets.UTF_8);
-        final var outputLength = normalizeTexture.apply(Value.i32(pointer), Value.i32(inputLength))[0].asInt();
-        final var outputBase64 = memory.readString(pointer, outputLength, StandardCharsets.UTF_8);
-        dealloc(pointer, inputLength);
-        return outputBase64;
+        private final ExportFunction alloc;
+        private final ExportFunction dealloc;
+        private final ExportFunction normalizeTexture;
+        private final Memory memory;
+
+        public Module(final HeadTextureFixerPlugin plugin) throws Exception {
+            final var stream = plugin.getResource(MODULE_NAME);
+            final var module = Parser.parse(stream);
+            final var instance = Instance.builder(module).build();
+            this.alloc = instance.export("alloc");
+            this.dealloc = instance.export("dealloc");
+            this.normalizeTexture = instance.export("normalize_texture");
+            this.memory = instance.memory();
+        }
+
+        private int alloc(final int length) {
+            return (int) alloc.apply(length)[0];
+        }
+
+        private void dealloc(final int pointer, final int length) {
+            dealloc.apply(pointer, length);
+        }
+
+        private int normalizeTexture(final int pointer, final int length) {
+            return (int) normalizeTexture.apply(pointer, length)[0];
+        }
+
+        public String fixTexture(final String inputBase64) {
+            final var inputLength = inputBase64.getBytes(StandardCharsets.UTF_8).length;
+            final var pointer = alloc(inputLength);
+            memory.writeString(pointer, inputBase64, StandardCharsets.UTF_8);
+            final var outputLength = normalizeTexture(pointer, inputLength);
+            final var outputBase64 = memory.readString(pointer, outputLength, StandardCharsets.UTF_8);
+            dealloc(pointer, inputLength);
+            return outputBase64;
+        }
     }
 }
