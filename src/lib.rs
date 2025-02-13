@@ -44,13 +44,12 @@ fn re_encode(input: &[u8]) -> Result<Vec<u8>, ReEncodeError> {
     Ok(encoded)
 }
 
-#[derive(Debug)]
 enum ReEncodeError {
     Base64,
     Json,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Deserialize, Serialize)]
 struct Property {
     #[serde(rename = "timestamp", skip)]
     _timestamp: u64,
@@ -63,20 +62,20 @@ struct Property {
     textures: Textures,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Deserialize, Serialize)]
 struct Textures {
     #[serde(rename = "SKIN")]
     skin: Skin,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Deserialize, Serialize)]
 struct Skin {
     url: String,
     #[serde(rename = "metadata", skip)]
     _metadata: Metadata,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Default, Deserialize, Serialize)]
 struct Metadata {
     model: String,
 }
