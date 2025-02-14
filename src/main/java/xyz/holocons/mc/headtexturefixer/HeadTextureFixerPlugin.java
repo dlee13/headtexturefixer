@@ -8,6 +8,7 @@ import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.destroystokyo.paper.profile.ProfileProperty;
+import com.dylibso.chicory.experimental.aot.AotMachine;
 import com.dylibso.chicory.runtime.ExportFunction;
 import com.dylibso.chicory.runtime.Instance;
 import com.dylibso.chicory.runtime.Memory;
@@ -93,7 +94,7 @@ public final class HeadTextureFixerPlugin extends JavaPlugin {
         public Module(final HeadTextureFixerPlugin plugin) throws Exception {
             final var stream = plugin.getResource(MODULE_NAME);
             final var module = Parser.parse(stream);
-            final var instance = Instance.builder(module).build();
+            final var instance = Instance.builder(module).withMachineFactory(AotMachine::new).build();
             this.alloc = instance.export("alloc");
             this.dealloc = instance.export("dealloc");
             this.normalizeTexture = instance.export("normalize_texture");
